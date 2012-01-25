@@ -1,0 +1,9 @@
+config VVCH_FS
+	tristate "Vitaly V. Ch fs support"
+	help
+	  VVCH is a experimental distributed Linux file system.
+
+	  To compile this file system support as a module, choose M here: the
+	  module will be called vvch.
+
+	  If unsure, say Y.
