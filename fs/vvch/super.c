@@ -24,14 +24,318 @@
 #include <linux/quotaops.h>
 #include <asm/uaccess.h>
 
+#include "vvchfs_fs.h"
+#include "vvchfs_fs_sb.h"
+
+static int vvchfs_parse_options(struct super_block *s, char *options,	/* string given via mount's -o */
+				  unsigned long *mount_options,
+				  /* after the parsing phase, contains the
+				     collection of bitflags defining what
+				     mount options were selected. */
+				  unsigned long *blocks,	/* strtol-ed from NNN of resize=NNN */
+				  char **jdev_name,
+				  unsigned int *commit_max_age,
+				  char **qf_names,
+				  unsigned int *qfmt)
+{
+    /*
+	int c;
+	char *arg = NULL;
+    */
+	char *pos;
+#if 0
+	opt_desc_t opts[] = {
+		/* Compatibility stuff, so that -o notail for old setups still work */
+		{"tails",.arg_required = 't',.values = tails},
+		{"notail",.clrmask =
+		 (1 << VVCHFS_LARGETAIL) | (1 << VVCHFS_SMALLTAIL)},
+		{"conv",.setmask = 1 << VVCHFS_CONVERT},
+		{"attrs",.setmask = 1 << VVCHFS_ATTRS},
+		{"noattrs",.clrmask = 1 << VVCHFS_ATTRS},
+		{"expose_privroot", .setmask = 1 << VVCHFS_EXPOSE_PRIVROOT},
+#ifdef CONFIG_VVCHFS_FS_XATTR
+		{"user_xattr",.setmask = 1 << VVCHFS_XATTRS_USER},
+		{"nouser_xattr",.clrmask = 1 << VVCHFS_XATTRS_USER},
+#else
+		{"user_xattr",.setmask = 1 << VVCHFS_UNSUPPORTED_OPT},
+		{"nouser_xattr",.clrmask = 1 << VVCHFS_UNSUPPORTED_OPT},
+#endif
+#ifdef CONFIG_VVCHFS_FS_POSIX_ACL
+		{"acl",.setmask = 1 << VVCHFS_POSIXACL},
+		{"noacl",.clrmask = 1 << VVCHFS_POSIXACL},
+#else
+		{"acl",.setmask = 1 << VVCHFS_UNSUPPORTED_OPT},
+		{"noacl",.clrmask = 1 << VVCHFS_UNSUPPORTED_OPT},
+#endif
+		{.option_name = "nolog"},
+		{"replayonly",.setmask = 1 << REPLAYONLY},
+		{"block-allocator",.arg_required = 'a',.values = balloc},
+		{"data",.arg_required = 'd',.values = logging_mode},
+		{"barrier",.arg_required = 'b',.values = barrier_mode},
+		{"resize",.arg_required = 'r',.values = NULL},
+		{"jdev",.arg_required = 'j',.values = NULL},
+		{"nolargeio",.arg_required = 'w',.values = NULL},
+		{"commit",.arg_required = 'c',.values = NULL},
+		{"usrquota",.setmask = 1 << VVCHFS_QUOTA},
+		{"grpquota",.setmask = 1 << VVCHFS_QUOTA},
+		{"noquota",.clrmask = 1 << VVCHFS_QUOTA},
+		{"errors",.arg_required = 'e',.values = error_actions},
+		{"usrjquota",.arg_required =
+		 'u' | (1 << VVCHFS_OPT_ALLOWEMPTY),.values = NULL},
+		{"grpjquota",.arg_required =
+		 'g' | (1 << VVCHFS_OPT_ALLOWEMPTY),.values = NULL},
+		{"jqfmt",.arg_required = 'f',.values = NULL},
+		{.option_name = NULL}
+	};
+#endif
+
+	*blocks = 0;
+	if (!options || !*options)
+		/* use default configuration: create tails, journaling on, no
+		   conversion to newest format */
+		return 1;
+
+	for (pos = options; pos;) {
+#if 0
+		c = vvchfs_getopt(s, &pos, opts, &arg, mount_options);
+		if (c == -1)
+			/* wrong option is given */
+			return 0;
+
+		if (c == 'r') {
+			char *p;
+
+			p = NULL;
+			/* "resize=NNN" or "resize=auto" */
+
+			if (!strcmp(arg, "auto")) {
+				/* From JFS code, to auto-get the size. */
+				*blocks =
+				    s->s_bdev->bd_inode->i_size >> s->
+				    s_blocksize_bits;
+			} else {
+				*blocks = simple_strtoul(arg, &p, 0);
+				if (*p != '\0') {
+					/* NNN does not look like a number */
+					vvchfs_warning(s, "super-6507",
+							 "bad value %s for "
+							 "-oresize\n", arg);
+					return 0;
+				}
+			}
+		}
+
+		if (c == 'c') {
+			char *p = NULL;
+			unsigned long val = simple_strtoul(arg, &p, 0);
+			/* commit=NNN (time in seconds) */
+			if (*p != '\0' || val >= (unsigned int)-1) {
+				vvchfs_warning(s, "super-6508",
+						 "bad value %s for -ocommit\n",
+						 arg);
+				return 0;
+			}
+			*commit_max_age = (unsigned int)val;
+		}
+
+		if (c == 'w') {
+			vvchfs_warning(s, "super-6509", "nolargeio option "
+					 "is no longer supported");
+			return 0;
+		}
+
+		if (c == 'j') {
+			if (arg && *arg && jdev_name) {
+				if (*jdev_name) {	//Hm, already assigned?
+					vvchfs_warning(s, "super-6510",
+							 "journal device was "
+							 "already specified to "
+							 "be %s", *jdev_name);
+					return 0;
+				}
+				*jdev_name = arg;
+			}
+		}
+#endif
+	}
+
+	return 1;
+}
+
+
+static int read_super_block(struct super_block *s, int offset)
+{
+	struct buffer_head *bh;
+	//struct vvchfs_super_block *vs;
+	//int fs_blocksize;
+
+	bh = sb_bread(s, offset / s->s_blocksize);
+#if 0
+	if (!bh) {
+		vvchfs_warning(s, "sh-2006",
+				 "bread failed (dev %s, block %lu, size %lu)",
+				 vvchfs_bdevname(s), offset / s->s_blocksize,
+				 s->s_blocksize);
+		return 1;
+	}
+
+	vs = (struct vvchfs_super_block *)bh->b_data;
+	if (!is_any_vvchfs_magic_string(vs)) {
+		brelse(bh);
+		return 1;
+	}
+	//
+	// ok, vvchfs signature (old or new) found in at the given offset
+	//
+	fs_blocksize = sb_blocksize(vs);
+	brelse(bh);
+	sb_set_blocksize(s, fs_blocksize);
+
+	bh = sb_bread(s, offset / s->s_blocksize);
+	if (!bh) {
+		vvchfs_warning(s, "sh-2007",
+				 "bread failed (dev %s, block %lu, size %lu)",
+				 vvchfs_bdevname(s), offset / s->s_blocksize,
+				 s->s_blocksize);
+		return 1;
+	}
+
+	vs = (struct vvchfs_super_block *)bh->b_data;
+	if (sb_blocksize(vs) != s->s_blocksize) {
+		vvchfs_warning(s, "sh-2011", "can't find a vvchfs "
+				 "filesystem on (dev %s, block %Lu, size %lu)",
+				 vvchfs_bdevname(s),
+				 (unsigned long long)bh->b_blocknr,
+				 s->s_blocksize);
+		brelse(bh);
+		return 1;
+	}
+
+	if (vs->s_v1.s_root_block == cpu_to_le32(-1)) {
+		brelse(bh);
+		vvchfs_warning(s, "super-6519", "Unfinished vvchfsck "
+				 "--rebuild-tree run detected. Please run\n"
+				 "vvchfsck --rebuild-tree and wait for a "
+				 "completion. If that fails\n"
+				 "get newer vvchfsprogs package");
+		return 1;
+	}
+
+	SB_BUFFER_WITH_SB(s) = bh;
+	SB_DISK_SUPER_BLOCK(s) = vs;
+
+	if (is_vvchfs_jr(vs)) {
+		/* magic is of non-standard journal filesystem, look at s_version to
+		   find which format is in use */
+		if (sb_version(vs) == VVCHFS_VERSION_2)
+			vvchfs_info(s, "found vvchfs format \"3.6\""
+				      " with non-standard journal\n");
+		else if (sb_version(vs) == VVCHFS_VERSION_1)
+			vvchfs_info(s, "found vvchfs format \"3.5\""
+				      " with non-standard journal\n");
+		else {
+			vvchfs_warning(s, "sh-2012", "found unknown "
+					 "format \"%u\" of vvchfs with "
+					 "non-standard magic", sb_version(vs));
+			return 1;
+		}
+	} else
+		/* s_version of standard format may contain incorrect information,
+		   so we just look at the magic string */
+		vvchfs_info(s,
+			      "found vvchfs format \"%s\" with standard journal\n",
+			      is_vvchfs_3_5(vs) ? "3.5" : "3.6");
+
+	s->s_op = &vvchfs_sops;
+	s->s_export_op = &vvchfs_export_ops;
+#endif
+
+	/* new format is limited by the 32 bit wide i_blocks field, want to
+	 ** be one full block below that.
+	 */
+	s->s_maxbytes = (512LL << 32) - s->s_blocksize;
+	return 0;
+}
+
+#define SWARN(silent, s, id, ...)			\
+	if (!(silent))				\
+		vvchfs_warning(s, id, __VA_ARGS__)
 
 static int vvch_fill_super(struct super_block *s, void *data, int silent)
 {
-	long ret = -EINVAL;
+	int old_format = 0;
+	unsigned long blocks;
+	unsigned int commit_max_age = 0;
+	struct vvchfs_super_block *vs;
+	char *jdev_name;
+	struct vvchfs_sb_info *sbi;
+	int errval = -EINVAL;
+	char *qf_names[MAXQUOTAS] = {};
+	unsigned int qfmt = 0;
 
     printk ("VVCH-fs: Hellow World\n");
 
-	return ret;
+	save_mount_options(s, data);
+
+	sbi = kzalloc(sizeof(struct vvchfs_sb_info), GFP_KERNEL);
+	if (!sbi) {
+		errval = -ENOMEM;
+		goto error;
+	}
+	s->s_fs_info = sbi;
+
+
+	jdev_name = NULL;
+	if (vvchfs_parse_options
+	    (s, (char *)data, &(sbi->s_mount_opt), &blocks, &jdev_name,
+	     &commit_max_age, qf_names, &qfmt) == 0) {
+		goto error;
+	}
+
+	if (blocks) {
+		SWARN(silent, s, "jmacd-7", "resize option for remount only");
+		goto error;
+	}
+
+	/* try old format (undistributed bitmap, super block in 8-th 1k block of a device) */
+	if (!read_super_block(s, VVCHFS_OLD_DISK_OFFSET_IN_BYTES))
+		old_format = 1;
+#if 0
+	/* try new format (64-th 1k block), which can contain vvchfs super block */
+	else if (read_super_block(s, VVCHFS_DISK_OFFSET_IN_BYTES)) {
+		SWARN(silent, s, "sh-2021", "can not find vvchfs on %s",
+		      vvchfs_bdevname(s));
+		goto error;
+	}
+#endif
+
+	vs = SB_DISK_SUPER_BLOCK(s);
+	/* Let's do basic sanity check to verify that underlying device is not
+	   smaller than the filesystem. If the check fails then abort and scream,
+	   because bad stuff will happen otherwise. */
+	if (s->s_bdev && s->s_bdev->bd_inode
+	    && i_size_read(s->s_bdev->bd_inode) <
+	    sb_block_count(vs) * sb_blocksize(vs)) {
+		SWARN(silent, s, "", "Filesystem cannot be "
+		      "mounted because it is bigger than the device");
+		SWARN(silent, s, "", "You may need to run fsck "
+		      "or increase size of your LVM partition");
+		SWARN(silent, s, "", "Or may be you forgot to "
+		      "reboot after fdisk when it told you to");
+		goto error;
+	}
+
+	sbi->s_mount_state = SB_VVCHFS_STATE(s);
+	sbi->s_mount_state = VVCHFS_VALID_FS;
+    sbi->s_vs = vs;
+
+
+
+error:
+	kfree(sbi);
+
+	s->s_fs_info = NULL;
+	return errval;
 }
 
 static int vvch_get_sb(struct file_system_type *fs_type,
