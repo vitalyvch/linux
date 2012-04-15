@@ -96,4 +96,13 @@ struct vvchfs_sb_info {
 	int j_errno;
 };
 
+/* A safe version of the "bdevname", which returns the "s_id" field of
+ * a superblock or else "Null superblock" if the super block is NULL.
+ */
+static inline char *vvchfs_bdevname(struct super_block *s)
+{
+	return (s == NULL) ? "Null superblock" : s->s_id;
+}
+
+
 #endif				/* _LINUX_VVCH_FS_SB */

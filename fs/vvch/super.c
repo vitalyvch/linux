@@ -166,11 +166,10 @@ static int vvchfs_parse_options(struct super_block *s, char *options,	/* string 
 static int read_super_block(struct super_block *s, int offset)
 {
 	struct buffer_head *bh;
-	//struct vvchfs_super_block *vs;
+	struct vvchfs_super_block *vs;
 	//int fs_blocksize;
 
 	bh = sb_bread(s, offset / s->s_blocksize);
-#if 0
 	if (!bh) {
 		vvchfs_warning(s, "sh-2006",
 				 "bread failed (dev %s, block %lu, size %lu)",
@@ -180,6 +179,7 @@ static int read_super_block(struct super_block *s, int offset)
 	}
 
 	vs = (struct vvchfs_super_block *)bh->b_data;
+#if 0
 	if (!is_any_vvchfs_magic_string(vs)) {
 		brelse(bh);
 		return 1;
