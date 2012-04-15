@@ -27,6 +27,8 @@
 #include "vvchfs_fs.h"
 #include "vvchfs_fs_sb.h"
 
+static struct file_system_type vvch_fs_type;
+
 static int vvchfs_parse_options(struct super_block *s, char *options,	/* string given via mount's -o */
 				  unsigned long *mount_options,
 				  /* after the parsing phase, contains the
@@ -344,13 +346,6 @@ static int vvch_get_sb(struct file_system_type *fs_type,
 	return get_sb_bdev(fs_type, flags, dev_name, data, vvch_fill_super, mnt);
 }
 
-static struct file_system_type vvch_fs_type = {
-	.owner		= THIS_MODULE,
-	.name		= "vvch",
-	.get_sb		= vvch_get_sb,
-	.kill_sb	= kill_block_super,
-	.fs_flags	= FS_REQUIRES_DEV,
-};
 
 static int __init init_vvch_fs(void)
 {
@@ -362,5 +357,17 @@ static void __exit exit_vvch_fs(void)
 	unregister_filesystem(&vvch_fs_type);
 }
 
-module_init(init_vvch_fs)
-module_exit(exit_vvch_fs)
+static struct file_system_type vvch_fs_type = {
+	.owner		= THIS_MODULE,
+	.name		= "vvch",
+	.get_sb		= vvch_get_sb,
+	.kill_sb	= kill_block_super,
+	.fs_flags	= FS_REQUIRES_DEV,
+};
+
+MODULE_DESCRIPTION("vvchfs journaled filesystem");
+MODULE_AUTHOR("Vitaly Chernooky <vv@chernooky.com>");
+MODULE_LICENSE("GPL");
+
+module_init(init_vvch_fs);
+module_exit(exit_vvch_fs);
