@@ -50,6 +50,28 @@ static int is_any_vvchfs_magic_string(struct vvchfs_super_block *vs)
 	return (is_vvchfs_sb(vs));
 }
 
+static int vvchfs_statfs(struct dentry *dentry, struct kstatfs *buf);
+
+static const struct super_operations vvchfs_sops = {
+#if 0
+	.alloc_inode = vvchfs_alloc_inode,
+	.destroy_inode = vvchfs_destroy_inode,
+	.write_inode = vvchfs_write_inode,
+	.dirty_inode = vvchfs_dirty_inode,
+	.evict_inode = vvchfs_evict_inode,
+	.put_super = vvchfs_put_super,
+	.write_super = vvchfs_write_super,
+	.sync_fs = vvchfs_sync_fs,
+	.freeze_fs = vvchfs_freeze,
+	.unfreeze_fs = vvchfs_unfreeze,
+#endif
+	.statfs = vvchfs_statfs,
+#if 0
+	.remount_fs = vvchfs_remount,
+	.show_options = generic_show_options,
+#endif
+};
+
 static int vvchfs_parse_options(struct super_block *s, char *options,	/* string given via mount's -o */
 				  unsigned long *mount_options,
 				  /* after the parsing phase, contains the
@@ -252,8 +274,8 @@ static int read_super_block(struct super_block *s, int offset)
 			      "found vvchfs format \"%s\" with standard journal\n",
 			      "0.0");
 
-#if 0
 	s->s_op = &vvchfs_sops;
+#if 0
 	s->s_export_op = &vvchfs_export_ops;
 #endif
 
@@ -344,7 +366,7 @@ error:
 	return errval;
 }
 
-/*static*/ int vvchfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+static int vvchfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
 	struct vvchfs_super_block *vs = SB_DISK_SUPER_BLOCK(dentry->d_sb);
 
