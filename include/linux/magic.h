@@ -47,6 +47,12 @@
 #define REISER2FS_SUPER_MAGIC_STRING	"ReIsEr2Fs"
 #define REISER2FS_JR_SUPER_MAGIC_STRING	"ReIsEr3Fs"
 
+#define VVCHFS_SUPER_MAGIC	0x56764368	/* used by gcc */
+/* used by file system utilities that
+   look at the superblock, etc.  */
+#define VVCHFS_SB_SUPER_MAGIC_STRING	"VvChFsSb"
+#define VVCHFS_BP_SUPER_MAGIC_STRING	"VvChFsBp"
+
 #define SMB_SUPER_MAGIC		0x517B
 #define USBDEVICE_SUPER_MAGIC	0x9fa2
 #define CGROUP_SUPER_MAGIC	0x27e0eb
