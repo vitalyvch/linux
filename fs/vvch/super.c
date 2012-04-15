@@ -300,17 +300,16 @@ static int vvch_fill_super(struct super_block *s, void *data, int silent)
 		goto error;
 	}
 
+	/// @todo Loop over powers of 2
 	/* try old format (undistributed bitmap, super block in 8-th 1k block of a device) */
 	if (!read_super_block(s, VVCHFS_OLD_DISK_OFFSET_IN_BYTES))
 		old_format = 1;
-#if 0
 	/* try new format (64-th 1k block), which can contain vvchfs super block */
 	else if (read_super_block(s, VVCHFS_DISK_OFFSET_IN_BYTES)) {
 		SWARN(silent, s, "sh-2021", "can not find vvchfs on %s",
 		      vvchfs_bdevname(s));
 		goto error;
 	}
-#endif
 
 	vs = SB_DISK_SUPER_BLOCK(s);
 	/* Let's do basic sanity check to verify that underlying device is not
