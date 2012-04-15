@@ -16,12 +16,13 @@
 #include <linux/random.h>
 #include <linux/buffer_head.h>
 #include <linux/exportfs.h>
+#include <linux/quotaops.h>
 #include <linux/smp_lock.h>
 #include <linux/vfs.h>
 #include <linux/seq_file.h>
 #include <linux/mount.h>
 #include <linux/log2.h>
-#include <linux/quotaops.h>
+#include <linux/crc32.h>
 #include <asm/uaccess.h>
 
 #include "vvchfs_fs.h"
@@ -338,6 +339,24 @@ error:
 
 	s->s_fs_info = NULL;
 	return errval;
+}
+
+/*static*/ int vvchfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+{
+	struct vvchfs_super_block *vs = SB_DISK_SUPER_BLOCK(dentry->d_sb);
+
+	buf->f_namelen = (VVCHFS_MAX_NAME(s->s_blocksize));
+	buf->f_bfree = sb_free_blocks(vs);
+	buf->f_bavail = buf->f_bfree;
+	buf->f_blocks = sb_block_count(vs);
+	buf->f_bsize = dentry->d_sb->s_blocksize;
+	/* changed to accommodate gcc folks. */
+	buf->f_type = VVCHFS_SUPER_MAGIC;
+	buf->f_fsid.val[0] = (u32)crc32_le(0, vs->s_uuid, sizeof(vs->s_uuid)/2);
+	buf->f_fsid.val[1] = (u32)crc32_le(0, vs->s_uuid + sizeof(vs->s_uuid)/2,
+				sizeof(vs->s_uuid)/2);
+
+	return 0;
 }
 
 static int vvch_get_sb(struct file_system_type *fs_type,
