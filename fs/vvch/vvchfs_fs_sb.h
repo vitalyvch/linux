@@ -96,6 +96,8 @@ struct vvchfs_sb_info {
 	int j_errno;
 };
 
+#define SB_BUFFER_WITH_SB(s) (VVCHFS_SB(s)->s_sbh)
+
 /* A safe version of the "bdevname", which returns the "s_id" field of
  * a superblock or else "Null superblock" if the super block is NULL.
  */

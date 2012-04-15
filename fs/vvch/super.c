@@ -30,6 +30,26 @@
 
 static struct file_system_type vvch_fs_type;
 
+static const char vvchfs_sb_magic_string[] = VVCHFS_SB_SUPER_MAGIC_STRING;
+static const char vvchfs_bp_magic_string[] = VVCHFS_BP_SUPER_MAGIC_STRING;
+
+int is_vvchfs_sb(struct vvchfs_super_block *vs)
+{
+	return !strncmp(vs->s_magic, vvchfs_sb_magic_string,
+			strlen(vvchfs_sb_magic_string));
+}
+
+int is_vvchfs_bp(struct vvchfs_super_block *vs)
+{
+	return !strncmp(vs->s_magic, vvchfs_bp_magic_string,
+			strlen(vvchfs_bp_magic_string));
+}
+
+static int is_any_vvchfs_magic_string(struct vvchfs_super_block *vs)
+{
+	return (is_vvchfs_sb(vs));
+}
+
 static int vvchfs_parse_options(struct super_block *s, char *options,	/* string given via mount's -o */
 				  unsigned long *mount_options,
 				  /* after the parsing phase, contains the
@@ -170,7 +190,7 @@ static int read_super_block(struct super_block *s, int offset)
 {
 	struct buffer_head *bh;
 	struct vvchfs_super_block *vs;
-	//int fs_blocksize;
+	int fs_blocksize;
 
 	bh = sb_bread(s, offset / s->s_blocksize);
 	if (!bh) {
@@ -182,7 +202,6 @@ static int read_super_block(struct super_block *s, int offset)
 	}
 
 	vs = (struct vvchfs_super_block *)bh->b_data;
-#if 0
 	if (!is_any_vvchfs_magic_string(vs)) {
 		brelse(bh);
 		return 1;
@@ -214,7 +233,7 @@ static int read_super_block(struct super_block *s, int offset)
 		return 1;
 	}
 
-	if (vs->s_v1.s_root_block == cpu_to_le32(-1)) {
+	if (vs->s_root_block == cpu_to_le32(-1)) {
 		brelse(bh);
 		vvchfs_warning(s, "super-6519", "Unfinished vvchfsck "
 				 "--rebuild-tree run detected. Please run\n"
@@ -227,6 +246,7 @@ static int read_super_block(struct super_block *s, int offset)
 	SB_BUFFER_WITH_SB(s) = bh;
 	SB_DISK_SUPER_BLOCK(s) = vs;
 
+#if 0
 	if (is_vvchfs_jr(vs)) {
 		/* magic is of non-standard journal filesystem, look at s_version to
 		   find which format is in use */
