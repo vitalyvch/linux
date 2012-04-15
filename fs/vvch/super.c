@@ -246,29 +246,13 @@ static int read_super_block(struct super_block *s, int offset)
 	SB_BUFFER_WITH_SB(s) = bh;
 	SB_DISK_SUPER_BLOCK(s) = vs;
 
-#if 0
-	if (is_vvchfs_jr(vs)) {
-		/* magic is of non-standard journal filesystem, look at s_version to
-		   find which format is in use */
-		if (sb_version(vs) == VVCHFS_VERSION_2)
-			vvchfs_info(s, "found vvchfs format \"3.6\""
-				      " with non-standard journal\n");
-		else if (sb_version(vs) == VVCHFS_VERSION_1)
-			vvchfs_info(s, "found vvchfs format \"3.5\""
-				      " with non-standard journal\n");
-		else {
-			vvchfs_warning(s, "sh-2012", "found unknown "
-					 "format \"%u\" of vvchfs with "
-					 "non-standard magic", sb_version(vs));
-			return 1;
-		}
-	} else
 		/* s_version of standard format may contain incorrect information,
 		   so we just look at the magic string */
 		vvchfs_info(s,
 			      "found vvchfs format \"%s\" with standard journal\n",
-			      is_vvchfs_3_5(vs) ? "3.5" : "3.6");
+			      "0.0");
 
+#if 0
 	s->s_op = &vvchfs_sops;
 	s->s_export_op = &vvchfs_export_ops;
 #endif

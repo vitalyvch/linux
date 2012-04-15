@@ -147,3 +147,14 @@ void __vvchfs_warning(struct super_block *sb, const char *id,
 		printk(KERN_WARNING "VVCHFS warning: %s%s%s: %s\n",
 		       id ? id : "", id ? " " : "", function, error_buf);
 }
+
+/* No newline.. vvchfs_info calls can be followed by printk's */
+void vvchfs_info(struct super_block *sb, const char *fmt, ...)
+{
+	do_vvchfs_warning(fmt);
+	if (sb)
+		printk(KERN_NOTICE "VVCHFS (device %s): %s",
+		       sb->s_id, error_buf);
+	else
+		printk(KERN_NOTICE "VVCHFS %s:", error_buf);
+}

@@ -134,5 +134,6 @@ static inline struct vvchfs_sb_info *VVCHFS_SB(const struct super_block *sb)
 // two entries per block (at least)
 #define VVCHFS_MAX_NAME(block_size) 255
 
+void vvchfs_info(struct super_block *s, const char *fmt, ...);
 
 #endif				/* _LINUX_VVCH_FS_H */
