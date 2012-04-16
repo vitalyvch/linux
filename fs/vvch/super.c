@@ -375,7 +375,7 @@ skip_reading_superblock:
 	sbi->s_mount_state = VVCHFS_VALID_FS;
     sbi->s_vs = vs;
 
-
+	return (0);
 
 error:
 	kfree(sbi);
