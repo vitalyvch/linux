@@ -292,7 +292,6 @@ static int read_super_block(struct super_block *s, int offset)
 
 static int vvch_fill_super(struct super_block *s, void *data, int silent)
 {
-	int old_format = 0;
 	unsigned long blocks;
 	unsigned int commit_max_age = 0;
 	struct vvchfs_super_block *vs;
@@ -311,6 +310,11 @@ static int vvch_fill_super(struct super_block *s, void *data, int silent)
 		errval = -ENOMEM;
 		goto error;
 	}
+	/// @value
+	///   -1 - Unknown sb offset
+	///   -2 - There are no superblock on disk.
+	///        Superblock recived via mount options
+	sbi->vvchfs_disk_offset_in_bytes = -1;
 	s->s_fs_info = sbi;
 
 
@@ -326,17 +330,31 @@ static int vvch_fill_super(struct super_block *s, void *data, int silent)
 		goto error;
 	}
 
+	/// if superblocl already setted via mount options
+	if (-2 == sbi->vvchfs_disk_offset_in_bytes)
+		goto skip_reading_superblock;
+
 	/// @todo Loop over powers of 2
-	/* try old format (undistributed bitmap, super block in 8-th 1k block of a device) */
-	if (!read_super_block(s, VVCHFS_OLD_DISK_OFFSET_IN_BYTES))
-		old_format = 1;
-	/* try new format (64-th 1k block), which can contain vvchfs super block */
-	else if (read_super_block(s, VVCHFS_DISK_OFFSET_IN_BYTES)) {
+	if (!read_super_block(s, 0))
+		sbi->vvchfs_disk_offset_in_bytes = 0;
+	else {
+		for (sbi->vvchfs_disk_offset_in_bytes = s->s_blocksize;
+			 sbi->vvchfs_disk_offset_in_bytes <= MAX_VVCHFS_DISK_OFFSET_IN_BYTES;
+			 sbi->vvchfs_disk_offset_in_bytes *= 2)
+		{
+			if (!read_super_block(s, sbi->vvchfs_disk_offset_in_bytes))
+				break;
+		}
+	}
+	   
+	   
+	if (sbi->vvchfs_disk_offset_in_bytes > MAX_VVCHFS_DISK_OFFSET_IN_BYTES) {
 		SWARN(silent, s, "sh-2021", "can not find vvchfs on %s",
-		      vvchfs_bdevname(s));
+			vvchfs_bdevname(s));
 		goto error;
 	}
 
+skip_reading_superblock:
 	vs = SB_DISK_SUPER_BLOCK(s);
 	/* Let's do basic sanity check to verify that underlying device is not
 	   smaller than the filesystem. If the check fails then abort and scream,

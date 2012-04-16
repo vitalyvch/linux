@@ -94,6 +94,7 @@ struct vvchfs_sb_info {
 	struct dentry *priv_root;	/* root of /.vvchfs_priv */
 	struct dentry *xattr_root;	/* root of /.vvchfs_priv/xattrs */
 	int j_errno;
+	long long vvchfs_disk_offset_in_bytes;
 };
 
 #define SB_BUFFER_WITH_SB(s) (VVCHFS_SB(s)->s_sbh)

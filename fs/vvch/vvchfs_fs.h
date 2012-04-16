@@ -107,17 +107,14 @@ struct vvchfs_super_block {
 #define SB_VERSION(s) le16_to_cpu ((SB_DISK_SUPER_BLOCK(s)->s_version))
 #define SB_BMAP_NR(s) le16_to_cpu ((SB_DISK_SUPER_BLOCK(s)->s_bmap_nr))
 
-/* vvchfs leaves the first 64k unused, so that partition labels have
+/* vvchfs by default leaves the first 64k unused, so that partition labels have
    enough space.  If someone wants to write a fancy bootloader that
-   needs more than 64k, let us know, and this will be increased in size.
+   needs more than 64k, touch another offset in mkfs.vvch command line options.
    This number must be larger than than the largest block size on any
    platform, or code will break.  -Hans */
 #define VVCHFS_DISK_OFFSET_IN_BYTES (64 * 1024)
-#define VVCHFS_FIRST_BLOCK unused_define
-#define VVCHFS_JOURNAL_OFFSET_IN_BYTES VVCHFS_DISK_OFFSET_IN_BYTES
 
-/* the spot for the super in versions 3.5 - 3.5.10 (inclusive) */
-#define VVCHFS_OLD_DISK_OFFSET_IN_BYTES (8 * 1024)
+#define MAX_VVCHFS_DISK_OFFSET_IN_BYTES (64+1024*1024)
 
 static inline struct vvchfs_sb_info *VVCHFS_SB(const struct super_block *sb)
 {
