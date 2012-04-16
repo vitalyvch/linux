@@ -1,0 +1,23 @@
+1. Magic
+
+Magic is begin of superblock or descriptor of block's pull.
+
+There are two magic:
+
+  - 'VvChFsSb' - SuperBlock
+  - 'VvChFsBp' - Blocks Pull
+
+Magic can be found in first 64 megabytes of disk with offsets:
+0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, ... HW blocks
+
+driver will loop over powers of 2 offsets until 64 MB exceeded.
+
+Magics are optional. Main purpose for magics - automated finding
+of SB on media.
+
+2. Mounting
+
+Supper block can be found on storage or given in mount options.
+
+If superblock is given in mount options then there are no need
+in any magics on media. Also no media scanning required.
