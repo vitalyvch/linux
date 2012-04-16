@@ -24,12 +24,13 @@
 #include <linux/buffer_head.h>
 #include "vvchfs_fs_i.h"
 #include "vvchfs_fs_sb.h"
-#endif
 
 void __vvchfs_warning(struct super_block *s, const char *id,
 			 const char *func, const char *fmt, ...);
 #define vvchfs_warning(s, id, fmt, args...) \
 	 __vvchfs_warning(s, id, __func__, fmt, ##args)
+#endif
+
 /*
  * Disk Data Structures
  */
@@ -116,10 +117,12 @@ struct vvchfs_super_block {
 
 #define MAX_VVCHFS_DISK_OFFSET_IN_BYTES (64+1024*1024)
 
+#ifdef __KERNEL__
 static inline struct vvchfs_sb_info *VVCHFS_SB(const struct super_block *sb)
 {
 	return sb->s_fs_info;
 }
+#endif
 
 
 /*
@@ -131,6 +134,8 @@ static inline struct vvchfs_sb_info *VVCHFS_SB(const struct super_block *sb)
 // two entries per block (at least)
 #define VVCHFS_MAX_NAME(block_size) 255
 
+#ifdef __KERNEL__
 void vvchfs_info(struct super_block *s, const char *fmt, ...);
+#endif
 
 #endif				/* _LINUX_VVCH_FS_H */

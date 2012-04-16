@@ -1,0 +1,2 @@
+mkfs.vvch: mkfs.vvch.c *.h
+	gcc -o mkfs.vvch mkfs.vvch.c
