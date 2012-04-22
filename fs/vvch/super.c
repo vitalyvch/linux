@@ -335,6 +335,7 @@ static int vvch_fill_super(struct super_block *s, void *data, int silent)
 		goto skip_reading_superblock;
 
 	/// @todo Loop over powers of 2
+	SWARN(silent, s, "cvv-1", "Try superblock at offset: #0");
 	if (!read_super_block(s, 0))
 		sbi->vvchfs_disk_offset_in_bytes = 0;
 	else {
@@ -342,6 +343,7 @@ static int vvch_fill_super(struct super_block *s, void *data, int silent)
 			 sbi->vvchfs_disk_offset_in_bytes <= MAX_VVCHFS_DISK_OFFSET_IN_BYTES;
 			 sbi->vvchfs_disk_offset_in_bytes *= 2)
 		{
+			SWARN(silent, s, "cvv-2", "Try superblock at offset: #%d", sbi->vvchfs_disk_offset_in_bytes);
 			if (!read_super_block(s, sbi->vvchfs_disk_offset_in_bytes))
 				break;
 		}
@@ -353,6 +355,7 @@ static int vvch_fill_super(struct super_block *s, void *data, int silent)
 			vvchfs_bdevname(s));
 		goto error;
 	}
+	SWARN(silent, s, "cvv-3", "superblock found at offset: #%d", sbi->vvchfs_disk_offset_in_bytes);
 
 skip_reading_superblock:
 	vs = SB_DISK_SUPER_BLOCK(s);
