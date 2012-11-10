@@ -131,10 +131,24 @@ static inline struct vvchfs_sb_info *VVCHFS_SB(const struct super_block *sb)
 #define VVCHFS_VALID_FS    1
 #define VVCHFS_ERROR_FS    2
 
+/* object identifier for root dir */
+#define VVCHFS_ROOT_OBJECTID 2
+#define VVCHFS_ROOT_PARENT_OBJECTID 1
+
 // two entries per block (at least)
 #define VVCHFS_MAX_NAME(block_size) 255
 
 #ifdef __KERNEL__
+
+struct vvchfs_iget_args {
+	__u32 objectid;
+	__u32 dirid;
+};
+
+void vvchfs_read_locked_inode(struct inode *inode,
+				struct vvchfs_iget_args *args);
+int vvchfs_find_actor(struct inode *inode, void *p);
+int vvchfs_init_locked_inode(struct inode *inode, void *p);
 void vvchfs_info(struct super_block *s, const char *fmt, ...);
 #endif
 

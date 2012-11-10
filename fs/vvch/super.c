@@ -292,8 +292,10 @@ static int read_super_block(struct super_block *s, int offset)
 
 static int vvch_fill_super(struct super_block *s, void *data, int silent)
 {
+	struct inode *root_inode;
 	unsigned long blocks;
 	unsigned int commit_max_age = 0;
+	struct vvchfs_iget_args args;
 	struct vvchfs_super_block *vs;
 	char *jdev_name;
 	struct vvchfs_sb_info *sbi;
@@ -377,6 +379,32 @@ skip_reading_superblock:
 	sbi->s_mount_state = SB_VVCHFS_STATE(s);
 	sbi->s_mount_state = VVCHFS_VALID_FS;
     sbi->s_vs = vs;
+
+	if (bdev_read_only(s->s_bdev) && !(s->s_flags & MS_RDONLY)) {
+		SWARN(silent, s, "clm-7000",
+		      "Detected readonly device, marking FS readonly");
+		s->s_flags |= MS_RDONLY;
+	}
+	args.objectid = VVCHFS_ROOT_OBJECTID;
+	args.dirid = VVCHFS_ROOT_PARENT_OBJECTID;
+	root_inode =
+	    iget5_locked(s, VVCHFS_ROOT_OBJECTID, vvchfs_find_actor,
+			 vvchfs_init_locked_inode, (void *)(&args));
+	if (!root_inode) {
+		SWARN(silent, s, "jmacd-10", "get root inode failed");
+		goto error;
+	}
+
+	if (root_inode->i_state & I_NEW) {
+		vvchfs_read_locked_inode(root_inode, &args);
+		unlock_new_inode(root_inode);
+	}
+
+	s->s_root = d_alloc_root(root_inode);
+	if (!s->s_root) {
+		iput(root_inode);
+		goto error;
+	}
 
 	return (0);
 

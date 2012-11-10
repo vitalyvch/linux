@@ -4,4 +4,4 @@
 
 obj-$(CONFIG_VVCH_FS) += vvch.o
 
-vvch-y := super.o prints.o
+vvch-y := super.o prints.o inode.o
